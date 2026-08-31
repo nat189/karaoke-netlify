@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Display - Karaoke</title>
+  <title>Display - Napat Karaoke</title>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
@@ -14,10 +14,13 @@
     #playerContainer iframe, #playerContainer div { width: 100%; height: 100%; border: none; }
     #startOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); }
     .start-btn { padding: 18px 42px; font-size: 24px; font-weight: bold; background: linear-gradient(45deg, #ff416c, #ff4b2b); color: #fff; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 0 25px rgba(255,65,108,0.8); }
-    .qr-card { position: fixed; bottom: 30px; right: 30px; background: rgba(20, 20, 20, 0.85); backdrop-filter: blur(10px); padding: 16px; border-radius: 16px; text-align: center; z-index: 5; border: 1px solid rgba(255,255,255,0.15); }
+    
+    .qr-card { position: fixed; bottom: 30px; right: 30px; background: rgba(20, 20, 20, 0.85); backdrop-filter: blur(10px); padding: 16px; border-radius: 16px; text-align: center; z-index: 5; border: 1px solid rgba(255,255,255,0.15); transition: opacity 0.5s ease, transform 0.5s ease; }
+    .qr-card.hidden { opacity: 0; transform: scale(0.8); pointer-events: none; }
     .qr-card h3 { color: #ff4b2b; margin-bottom: 8px; font-size: 18px; font-weight: bold; }
     #qrcode { background: #fff; padding: 8px; border-radius: 8px; display: inline-block; }
     .qr-card p { font-size: 13px; margin-top: 8px; color: #ccc; }
+    
     .track-info { position: fixed; top: 20px; left: 20px; z-index: 5; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 30px; font-size: 16px; display: none; border: 1px solid rgba(255,255,255,0.2); }
   </style>
 </head>
@@ -35,7 +38,7 @@
     <button class="start-btn" id="startBtn">🎤 เริ่มความมันส์!</button>
   </div>
 
-  <div class="qr-card">
+  <div class="qr-card" id="qrCard">
     <h3 id="roomLabel">ห้อง: กำลังเชื่อมต่อ...</h3>
     <div id="qrcode"></div>
     <p>สแกนเพื่อจองเพลง 🎤</p>
@@ -43,11 +46,9 @@
 
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
-    // สุ่ม ID ห้องสั้นๆ เพื่อไม่ให้ชนกับคนอื่น
     const roomId = 'room_' + Math.random().toString(36).substring(2, 7);
     document.getElementById('roomLabel').innerText = `ห้อง: ${roomId}`;
 
-    // สร้าง QR Code
     const controllerUrl = `${window.location.origin}/controller.html?room=${roomId}`;
     new QRCode(document.getElementById("qrcode"), {
       text: controllerUrl,
@@ -56,52 +57,139 @@
     });
 
     let player;
+    let isPlayerReady = false;
     let playlist = [];
     let isPlaying = false;
+    let connections = [];
+    let qrTimer = null;
+    let checkEndInterval = null;
 
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('player', {
         playerVars: { 'autoplay': 1, 'controls': 1, 'rel': 0 },
         events: {
-          'onStateChange': (event) => {
-            if (event.data === 0) playNext();
-          }
+          'onReady': () => { isPlayerReady = true; },
+          'onStateChange': onPlayerStateChange
         }
       });
     }
 
-    function playVideo(videoId, title) {
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.PLAYING) {
+        startQrHideTimer();
+        startCheckEndTime();
+      } else if (event.data === YT.PlayerState.ENDED) {
+        clearInterval(checkEndInterval);
+        playNext();
+      }
+    }
+
+    // จัดการการซ่อน-แสดง QR Code
+    function showQR() {
+      document.getElementById('qrCard').classList.remove('hidden');
+    }
+
+    function hideQR() {
+      document.getElementById('qrCard').classList.add('hidden');
+    }
+
+    function startQrHideTimer() {
+      clearTimeout(qrTimer);
+      showQR();
+      // หายไปหลังจากเริ่มเล่น 15 วิ
+      qrTimer = setTimeout(() => {
+        hideQR();
+      }, 15000);
+    }
+
+    function startCheckEndTime() {
+      clearInterval(checkEndInterval);
+      // ตรวจสอบเวลาที่เหลือก่อนจบเพลง
+      checkEndInterval = setInterval(() => {
+        if (player && player.getDuration && player.getCurrentTime) {
+          const duration = player.getDuration();
+          const currentTime = player.getCurrentTime();
+          // โผล่กลับมาตอนเหลือ 15 วิก่อนจบ
+          if (duration > 0 && (duration - currentTime) <= 15) {
+            showQR();
+          }
+        }
+      }, 1000);
+    }
+
+    function playVideo(song) {
       document.getElementById('bg').style.display = 'none';
       document.getElementById('playerContainer').style.display = 'block';
       document.getElementById('trackInfo').style.display = 'block';
-      document.getElementById('trackInfo').innerText = `กำลังเล่น: ${title}`;
+      document.getElementById('trackInfo').innerText = `กำลังเล่น: ${song.title}`;
 
-      if (player && player.loadVideoById) {
-        player.loadVideoById(videoId);
+      if (isPlayerReady && player.loadVideoById) {
+        player.loadVideoById(song.videoId);
       }
       isPlaying = true;
+      broadcastQueue();
     }
 
     function playNext() {
       playlist.shift();
       if (playlist.length > 0) {
-        playVideo(playlist[0].videoId, playlist[0].title);
+        playVideo(playlist[0]);
       } else {
         isPlaying = false;
+        clearInterval(checkEndInterval);
+        showQR();
         document.getElementById('bg').style.display = 'block';
         document.getElementById('playerContainer').style.display = 'none';
         document.getElementById('trackInfo').style.display = 'none';
       }
+      broadcastQueue();
     }
 
-    // เชื่อมต่อ PeerJS เพื่อรอรับคำสั่งจองเพลงข้ามเครื่อง
+    function broadcastQueue() {
+      connections.forEach(conn => {
+        if (conn.open) {
+          conn.send({ type: 'QUEUE_UPDATE', queue: playlist });
+        }
+      });
+    }
+
+    // ระบบเชื่อมต่อ PeerJS
     const peer = new Peer(roomId);
 
     peer.on('connection', (conn) => {
-      conn.on('data', (song) => {
-        playlist.push(song);
-        if (!isPlaying) {
-          playVideo(song.videoId, song.title);
+      connections.push(conn);
+
+      conn.on('open', () => {
+        conn.send({ type: 'QUEUE_UPDATE', queue: playlist });
+      });
+
+      conn.on('data', (data) => {
+        if (data.action === 'ADD_SONG') {
+          playlist.push(data.song);
+          if (!isPlaying) {
+            playVideo(playlist[0]);
+          } else {
+            broadcastQueue();
+          }
+        } else if (data.action === 'SKIP') {
+          playNext();
+        } else if (data.action === 'TOGGLE_PAUSE') {
+          if (player && player.getPlayerState) {
+            const state = player.getPlayerState();
+            if (state === YT.PlayerState.PLAYING) {
+              player.pauseVideo();
+            } else {
+              player.playVideo();
+            }
+          }
+        } else if (data.action === 'REMOVE_SONG') {
+          const index = data.index;
+          if (index === 0) {
+            playNext();
+          } else if (index > 0 && index < playlist.length) {
+            playlist.splice(index, 1);
+            broadcastQueue();
+          }
         }
       });
     });
