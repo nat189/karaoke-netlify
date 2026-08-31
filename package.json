@@ -1,0 +1,11 @@
+{
+  "name": "karaoke-netlify",
+  "version": "1.0.0",
+  "main": "netlify/functions/search.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "yt-search": "^2.11.1"
+  }
+}
