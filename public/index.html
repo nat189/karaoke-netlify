@@ -9,7 +9,7 @@
     body { background-color: #121212; color: #fff; padding: 16px; display: flex; justify-content: center; }
     .container { width: 100%; max-width: 600px; }
 
-    /* กรอบจอ YouTube */
+    /* กรอบจอ YouTube ด้านบน */
     .player-wrapper {
       position: relative;
       width: 100%;
@@ -92,7 +92,7 @@
       cursor: pointer;
     }
 
-    /* คิวเพลง */
+    /* หัวข้อคิวเพลง */
     .queue-header {
       color: #30d158;
       font-size: 16px;
@@ -143,28 +143,28 @@
 <body>
 
   <div class="container">
-    <!-- จอ YouTube ด้านบน -->
+    <!-- กล่องเล่นวิดีโอ -->
     <div class="player-wrapper">
       <div id="player"></div>
     </div>
 
-    <!-- ปุ่มควบคุมข้าม / หยุด -->
+    <!-- ปุ่มควบคุม -->
     <button class="btn-skip" id="btnSkip">ข้ามเพลง ❯❯</button>
     <button class="btn-pause" id="btnPause">⏸ หยุดชั่วคราว</button>
 
-    <!-- ช่องค้นหา -->
+    <!-- ค้นหาเพลง -->
     <div class="search-container">
       <input type="text" class="search-input" id="searchInput" placeholder="ค้นหาเพลง...">
       <button class="btn-search" id="searchBtn">ค้นหา</button>
     </div>
 
-    <!-- รายการคิวเพลง -->
+    <!-- คิวเพลง -->
     <div class="queue-header">คิวเพลง (กดค้าง 2 วินาทีเพื่อลบ)</div>
     <div class="queue-list" id="queueList">
       <div style="color: #666; font-size: 13px;">ยังไม่มีเพลงในคิว</div>
     </div>
 
-    <!-- รายการค้นหา 20 เพลง -->
+    <!-- ผลการค้นหา -->
     <div class="results-header" id="resHeader" style="display:none;">ผลการค้นหา (20 เพลง)</div>
     <div class="song-list" id="results"></div>
   </div>
@@ -175,28 +175,43 @@
     let playlist = [];
     let isPlaying = false;
     let isPaused = false;
+    let isApiReady = false;
 
     function onYouTubeIframeAPIReady() {
-      player = new YT.Player('player', {
-        playerVars: { 'autoplay': 1, 'controls': 1, 'playsinline': 1, 'rel': 0 },
-        events: {
-          'onStateChange': (event) => {
-            if (event.data === YT.PlayerState.ENDED) {
-              playNext();
-            }
-          }
-        }
-      });
+      isApiReady = true;
     }
 
     function playVideo(song) {
-      if (player && player.loadVideoById) {
-        player.loadVideoById(song.videoId);
-      }
+      const container = document.getElementById('player');
       isPlaying = true;
       isPaused = false;
       document.getElementById('btnPause').innerText = '⏸ หยุดชั่วคราว';
       renderQueue();
+
+      if (player && typeof player.loadVideoById === 'function') {
+        player.loadVideoById(song.videoId);
+      } else {
+        container.innerHTML = `
+          <iframe id="ytIframe" width="100%" height="100%" 
+            src="https://www.youtube.com/embed/${song.videoId}?autoplay=1&playsinline=1&enablejsapi=1&rel=0" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowfullscreen>
+          </iframe>`;
+
+        if (isApiReady) {
+          player = new YT.Player('ytIframe', {
+            events: {
+              'onStateChange': (event) => {
+                if (event.data === YT.PlayerState.ENDED) {
+                  playNext();
+                }
+              }
+            }
+          });
+        }
+      }
+
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
@@ -206,31 +221,30 @@
         playVideo(playlist[0]);
       } else {
         isPlaying = false;
-        if (player && player.stopVideo) player.stopVideo();
+        if (player && typeof player.stopVideo === 'function') player.stopVideo();
+        const container = document.getElementById('player');
+        if (container) container.innerHTML = '';
       }
       renderQueue();
     }
 
-    // ปุ่มข้ามเพลง
     document.getElementById('btnSkip').onclick = () => {
       if (playlist.length > 0) playNext();
     };
 
-    // ปุ่มหยุด / เล่นต่อ
     const btnPause = document.getElementById('btnPause');
     btnPause.onclick = () => {
-      if (!player || !player.getPlayerState) return;
+      if (!player) return;
       if (isPaused) {
-        player.playVideo();
+        if (typeof player.playVideo === 'function') player.playVideo();
         btnPause.innerText = '⏸ หยุดชั่วคราว';
       } else {
-        player.pauseVideo();
+        if (typeof player.pauseVideo === 'function') player.pauseVideo();
         btnPause.innerText = '▶ เล่นต่อ';
       }
       isPaused = !isPaused;
     };
 
-    // เพิ่มเพลงเข้าคิว
     function addSong(song) {
       playlist.push(song);
       if (!isPlaying) {
@@ -241,7 +255,6 @@
       }
     }
 
-    // แสดงคิวเพลง + ระบบกดค้าง 2 วินาทีเพื่อลบ
     function renderQueue() {
       const container = document.getElementById('queueList');
       if (playlist.length === 0) {
@@ -278,7 +291,6 @@
       });
     }
 
-    // ค้นหาเพลงผ่าน Netlify Functions
     async function search() {
       const q = document.getElementById('searchInput').value.trim();
       if (!q) return;
