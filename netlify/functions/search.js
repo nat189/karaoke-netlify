@@ -14,7 +14,8 @@ exports.handler = async (event) => {
   try {
     const searchKeyword = query.includes('คาราโอเกะ') ? query : `${query} คาราโอเกะ`;
     const r = await yts(searchKeyword);
-    const results = r.videos.slice(0, 10).map(v => ({
+    // เพิ่มเป็น 20 เพลง
+    const results = r.videos.slice(0, 20).map(v => ({
       videoId: v.videoId,
       title: v.title,
       thumbnail: v.thumbnail,
