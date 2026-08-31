@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Display - Karaoke</title>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -22,7 +23,6 @@
 </head>
 <body>
 
-  <!-- ภาพพื้นหลังป่าไม้ตอนพักจอ -->
   <img id="bg" src="https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1920&q=80" alt="Background">
 
   <div id="playerContainer">
@@ -36,19 +36,18 @@
   </div>
 
   <div class="qr-card">
-    <h3 id="roomLabel">ห้อง: Room1</h3>
+    <h3 id="roomLabel">ห้อง: กำลังเชื่อมต่อ...</h3>
     <div id="qrcode"></div>
     <p>สแกนเพื่อจองเพลง 🎤</p>
   </div>
 
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
-    // สุ่มหรือกำหนดชื่อห้อง
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomId = urlParams.get('room') || 'Room1';
+    // สุ่ม ID ห้องสั้นๆ เพื่อไม่ให้ชนกับคนอื่น
+    const roomId = 'room_' + Math.random().toString(36).substring(2, 7);
     document.getElementById('roomLabel').innerText = `ห้อง: ${roomId}`;
 
-    // สร้าง QR Code อัตโนมัติตาม URL ปัจจุบัน
+    // สร้าง QR Code
     const controllerUrl = `${window.location.origin}/controller.html?room=${roomId}`;
     new QRCode(document.getElementById("qrcode"), {
       text: controllerUrl,
@@ -57,7 +56,6 @@
     });
 
     let player;
-    let isPlayerReady = false;
     let playlist = [];
     let isPlaying = false;
 
@@ -65,9 +63,8 @@
       player = new YT.Player('player', {
         playerVars: { 'autoplay': 1, 'controls': 1, 'rel': 0 },
         events: {
-          'onReady': () => { isPlayerReady = true; },
           'onStateChange': (event) => {
-            if (event.data === 0) playNext(); // เพลงจบ เล่นเพลงถัดไป
+            if (event.data === 0) playNext();
           }
         }
       });
@@ -79,7 +76,7 @@
       document.getElementById('trackInfo').style.display = 'block';
       document.getElementById('trackInfo').innerText = `กำลังเล่น: ${title}`;
 
-      if (isPlayerReady && player.loadVideoById) {
+      if (player && player.loadVideoById) {
         player.loadVideoById(videoId);
       }
       isPlaying = true;
@@ -97,16 +94,17 @@
       }
     }
 
-    // BroadcastChannel สำหรับรับเพลง (ทำงานในเบราว์เซอร์เครื่องเดียวกัน/แท็บเดียวกัน) 
-    // หรือดึงผ่านคลังเพลง
-    const channel = new BroadcastChannel(`karaoke_${roomId}`);
-    channel.onmessage = (event) => {
-      const song = event.data;
-      playlist.push(song);
-      if (!isPlaying) {
-        playVideo(song.videoId, song.title);
-      }
-    };
+    // เชื่อมต่อ PeerJS เพื่อรอรับคำสั่งจองเพลงข้ามเครื่อง
+    const peer = new Peer(roomId);
+
+    peer.on('connection', (conn) => {
+      conn.on('data', (song) => {
+        playlist.push(song);
+        if (!isPlaying) {
+          playVideo(song.videoId, song.title);
+        }
+      });
+    });
 
     document.getElementById('startBtn').addEventListener('click', () => {
       document.getElementById('startOverlay').style.display = 'none';
