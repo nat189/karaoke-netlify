@@ -1,24 +1,36 @@
 let player;
-let isPlayerReady = false;
 
-// โหลด YouTube IFrame Player
-function onYouTubeIframeAPIReady() {
-  player = new YT.Player('player', {
-    videoId: '', // ว่างไว้ตอนเริ่ม
-    playerVars: {
-      'autoplay': 1,
-      'controls': 1
-    },
-    events: {
-      'onReady': () => { isPlayerReady = true; }
-    }
-  });
-}
-
+// ฟังก์ชันสร้างหรือสั่งเล่นเพลง
 function playSong(videoId) {
-  if (isPlayerReady && player.loadVideoById) {
-    player.loadVideoById(videoId);
+  const container = document.getElementById('player');
+
+  // ถ้ายังไม่มี Player หรือโหลดไม่ติด ให้สร้าง IFrame ฝังตรงๆ
+  if (!player) {
+    player = new YT.Player('player', {
+      videoId: videoId,
+      playerVars: {
+        'autoplay': 1,
+        'playsinline': 1,
+        'rel': 0
+      },
+      events: {
+        'onReady': (event) => {
+          event.target.playVideo();
+        }
+      }
+    });
+  } else {
+    // ถ้ามี Player แล้ว ให้เปลี่ยนเพลงทันที
+    if (typeof player.loadVideoById === 'function') {
+      player.loadVideoById(videoId);
+    } else {
+      // Fallback กรณี API ค้าง: โหลด IFrame ตรง
+      container.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+    }
   }
+
+  // เลื่อนหน้าจอขึ้นไปดูวิดีโอด้านบน
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // ระบบค้นหาเพลงผ่าน Netlify Function
@@ -31,7 +43,7 @@ async function searchSongs() {
   
   btn.disabled = true;
   btn.innerText = 'กำลังค้นหา...';
-  resultsContainer.innerHTML = '<p style="color:#aaa;">กำลังโหลดข้อมูล...</p>';
+  resultsContainer.innerHTML = '<p style="color:#aaa; text-align:center;">กำลังค้นหาเพลง...</p>';
 
   try {
     const res = await fetch(`/.netlify/functions/search?q=${encodeURIComponent(query)}`);
@@ -40,7 +52,7 @@ async function searchSongs() {
     resultsContainer.innerHTML = '';
 
     if (!data || data.length === 0) {
-      resultsContainer.innerHTML = '<p style="color:#aaa;">ไม่พบเพลงที่ค้นหา</p>';
+      resultsContainer.innerHTML = '<p style="color:#aaa; text-align:center;">ไม่พบเพลงที่ค้นหา</p>';
       return;
     }
 
@@ -58,7 +70,7 @@ async function searchSongs() {
       resultsContainer.appendChild(card);
     });
   } catch (err) {
-    resultsContainer.innerHTML = `<p style="color:red;">เกิดข้อผิดพลาด: ${err.message}</p>`;
+    resultsContainer.innerHTML = `<p style="color:red; text-align:center;">เกิดข้อผิดพลาด: ${err.message}</p>`;
   } finally {
     btn.disabled = false;
     btn.innerText = 'ค้นหาเพลง';
