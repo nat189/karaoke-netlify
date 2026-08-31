@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>จองเพลงคาราโอเกะ</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #121212; color: #fff; padding: 15px; }
+    .header { text-align: center; margin: 10px 0 20px 0; }
+    .header h2 { font-size: 20px; color: #ff4b2b; }
+    .search-box { display: flex; gap: 8px; margin-bottom: 20px; }
+    input { flex: 1; padding: 12px 14px; border-radius: 8px; border: 1px solid #333; background: #222; color: #fff; font-size: 16px; outline: none; }
+    button.btn-search { padding: 12px 18px; border-radius: 8px; border: none; background: #00adb5; color: #fff; font-weight: bold; font-size: 15px; cursor: pointer; }
+    .song-list { display: flex; flex-direction: column; gap: 10px; }
+    .song-item { display: flex; align-items: center; background: #1f1f1f; padding: 10px; border-radius: 8px; gap: 10px; }
+    .song-item img { width: 85px; height: 50px; object-fit: cover; border-radius: 6px; }
+    .song-info { flex: 1; min-width: 0; }
+    .song-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .song-artist { font-size: 12px; color: #888; margin-top: 3px; }
+    .btn-add { background: #ff4b2b; border: none; color: #fff; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h2 id="roomTitle">🎤 จองเพลง (Room1)</h2>
+  </div>
+
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="พิมพ์ชื่อเพลงหรือศิลปิน...">
+    <button class="btn-search" id="searchBtn">ค้นหา</button>
+  </div>
+
+  <div class="song-list" id="results"></div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomId = urlParams.get('room') || 'Room1';
+    document.getElementById('roomTitle').innerText = `🎤 จองเพลง (${roomId})`;
+
+    const channel = new BroadcastChannel(`karaoke_${roomId}`);
+
+    function queueSong(song) {
+      channel.postMessage(song);
+      alert(`จองเพลง "${song.title}" เข้าคิวเรียบร้อย!`);
+    }
+
+    async function search() {
+      const q = document.getElementById('searchInput').value.trim();
+      if (!q) return;
+
+      const container = document.getElementById('results');
+      container.innerHTML = '<p style="color:#aaa; text-align:center;">กำลังค้นหาเพลง...</p>';
+
+      try {
+        const res = await fetch(`/.netlify/functions/search?q=${encodeURIComponent(q)}`);
+        const list = await res.json();
+        container.innerHTML = '';
+
+        list.forEach(song => {
+          const div = document.createElement('div');
+          div.className = 'song-item';
+          div.innerHTML = `
+            <img src="${song.thumbnail}" alt="thumb">
+            <div class="song-info">
+              <div class="song-title">${song.title}</div>
+              <div class="song-artist">${song.author} • ${song.duration}</div>
+            </div>
+            <button class="btn-add">จอง</button>
+          `;
+          div.querySelector('.btn-add').onclick = () => queueSong(song);
+          container.appendChild(div);
+        });
+      } catch (err) {
+        container.innerHTML = `<p style="color:red; text-align:center;">เกิดข้อผิดพลาด</p>`;
+      }
+    }
+
+    document.getElementById('searchBtn').onclick = search;
+    document.getElementById('searchInput').onkeypress = (e) => { if (e.key === 'Enter') search(); };
+  </script>
+</body>
+</html>
