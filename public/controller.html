@@ -2,73 +2,257 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>จองเพลงคาราโอเกะ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>รีโมทคาราโอเกะ</title>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #121212; color: #fff; padding: 15px; }
-    .header { text-align: center; margin: 10px 0 20px 0; }
-    .header h2 { font-size: 20px; color: #ff4b2b; }
-    #status { font-size: 13px; color: #888; margin-top: 4px; }
-    .search-box { display: flex; gap: 8px; margin-bottom: 20px; }
-    input { flex: 1; padding: 12px 14px; border-radius: 8px; border: 1px solid #333; background: #222; color: #fff; font-size: 16px; outline: none; }
-    button.btn-search { padding: 12px 18px; border-radius: 8px; border: none; background: #00adb5; color: #fff; font-weight: bold; font-size: 15px; cursor: pointer; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: #121212; color: #fff; padding: 16px; }
+
+    /* การ์ดหัวข้อ */
+    .room-card {
+      background: #1e1e1e;
+      border-radius: 18px;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      border: 1px solid #2a2a2a;
+    }
+    .room-title { color: #ff3b30; font-size: 24px; font-weight: bold; }
+    .edition-label { color: #666; font-size: 14px; }
+
+    /* ปุ่มควบคุมหลัก */
+    .btn-skip {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(90deg, #ff416c, #ff4b2b);
+      border: none;
+      border-radius: 30px;
+      color: #fff;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 15px rgba(255, 65, 108, 0.3);
+    }
+    .btn-pause {
+      width: 100%;
+      padding: 14px;
+      background: #5856d6;
+      border: none;
+      border-radius: 30px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 15px rgba(88, 86, 214, 0.3);
+    }
+
+    /* ช่องค้นหา */
+    .search-container {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .search-input {
+      flex: 1;
+      background: #242424;
+      border: 1px solid #333;
+      border-radius: 14px;
+      padding: 14px 16px;
+      color: #fff;
+      font-size: 16px;
+      outline: none;
+    }
+    .search-input::placeholder { color: #666; }
+    .btn-search {
+      background: #007aff;
+      border: none;
+      border-radius: 14px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: bold;
+      padding: 0 24px;
+      cursor: pointer;
+    }
+
+    /* หัวข้อคิวเพลง */
+    .queue-header {
+      color: #30d158;
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+
+    /* รายการคิวเพลง */
+    .queue-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+    .queue-item {
+      background: #1c1c1e;
+      padding: 12px 16px;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid #2c2c2e;
+      user-select: none;
+    }
+    .queue-item.playing { border-left: 4px solid #30d158; }
+    .queue-title { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 85%; }
+
+    /* ผลการค้นหา */
+    .results-header { color: #888; font-size: 14px; margin-bottom: 12px; }
     .song-list { display: flex; flex-direction: column; gap: 10px; }
-    .song-item { display: flex; align-items: center; background: #1f1f1f; padding: 10px; border-radius: 8px; gap: 10px; }
-    .song-item img { width: 85px; height: 50px; object-fit: cover; border-radius: 6px; }
+    .song-item {
+      display: flex;
+      align-items: center;
+      background: #1c1c1e;
+      padding: 10px;
+      border-radius: 12px;
+      gap: 12px;
+    }
+    .song-item img { width: 90px; height: 55px; object-fit: cover; border-radius: 8px; }
     .song-info { flex: 1; min-width: 0; }
     .song-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .song-artist { font-size: 12px; color: #888; margin-top: 3px; }
-    .btn-add { background: #ff4b2b; border: none; color: #fff; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; }
+    .song-artist { font-size: 12px; color: #888; margin-top: 4px; }
+    .btn-add {
+      background: #ff453a;
+      border: none;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
 
-  <div class="header">
-    <h2 id="roomTitle">🎤 จองเพลง</h2>
-    <div id="status">กำลังเชื่อมต่อกับจอหลัก...</div>
+  <!-- การ์ดห้อง -->
+  <div class="room-card">
+    <div class="room-title" id="roomTitle">ห้อง: ...</div>
+    <div class="edition-label">Napat Edition</div>
   </div>
 
-  <div class="search-box">
-    <input type="text" id="searchInput" placeholder="พิมพ์ชื่อเพลงหรือศิลปิน...">
+  <!-- ปุ่มควบคุม -->
+  <button class="btn-skip" id="btnSkip">ข้ามเพลง ❯❯</button>
+  <button class="btn-pause" id="btnPause">⏸ หยุดชั่วคราว</button>
+
+  <!-- ค้นหาเพลง -->
+  <div class="search-container">
+    <input type="text" class="search-input" id="searchInput" placeholder="ค้นหาเพลง...">
     <button class="btn-search" id="searchBtn">ค้นหา</button>
   </div>
 
+  <!-- คิวเพลง -->
+  <div class="queue-header">คิวเพลง (กดค้าง 2 วินาทีเพื่อลบ)</div>
+  <div class="queue-list" id="queueList">
+    <div style="color: #666; font-size: 13px;">ยังไม่มีเพลงในคิว</div>
+  </div>
+
+  <!-- ผลการค้นหา -->
+  <div class="results-header" id="resHeader" style="display:none;">ผลการค้นหา (20 เพลง)</div>
   <div class="song-list" id="results"></div>
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const targetRoomId = urlParams.get('room');
-    document.getElementById('roomTitle').innerText = `🎤 จองเพลง (${targetRoomId || 'ไม่พบห้อง'})`;
+    document.getElementById('roomTitle').innerText = targetRoomId ? `ห้อง: ${targetRoomId}` : 'ห้อง: Room1';
 
     const peer = new Peer();
     let conn;
+    let isPaused = false;
 
     peer.on('open', () => {
       if (targetRoomId) {
         conn = peer.connect(targetRoomId);
-        conn.on('open', () => {
-          document.getElementById('status').innerText = '🟢 เชื่อมต่อกับจอใหญ่สำเร็จ';
-          document.getElementById('status').style.color = '#00ff88';
+        conn.on('data', (data) => {
+          if (data.type === 'QUEUE_UPDATE') {
+            renderQueue(data.queue);
+          }
         });
       }
     });
 
+    // ปุ่มข้ามเพลง
+    document.getElementById('btnSkip').onclick = () => {
+      if (conn && conn.open) conn.send({ action: 'SKIP' });
+    };
+
+    // ปุ่มหยุดชั่วคราว / เล่นต่อ
+    const btnPause = document.getElementById('btnPause');
+    btnPause.onclick = () => {
+      if (conn && conn.open) {
+        conn.send({ action: 'TOGGLE_PAUSE' });
+        isPaused = !isPaused;
+        btnPause.innerText = isPaused ? '▶ เล่นต่อ' : '⏸ หยุดชั่วคราว';
+      }
+    };
+
+    // จองเพลง
     function queueSong(song) {
       if (conn && conn.open) {
-        conn.send(song);
-        alert(`จองเพลง "${song.title}" เรียบร้อย!`);
+        conn.send({ action: 'ADD_SONG', song });
+        alert(`จองเพลง "${song.title}" เข้าคิวเรียบร้อย!`);
       } else {
-        alert('ยังไม่เชื่อมต่อกับจอหลัก กรุณารอสักครู่หรือลองสแกนใหม่อีกครั้ง');
+        alert('กำลังเชื่อมต่อกับจอหลัก กรุณารอสักครู่');
       }
     }
 
+    // แสดงคิวเพลง + ระบบกดค้าง 2 วินาทีเพื่อลบ
+    function renderQueue(queue) {
+      const container = document.getElementById('queueList');
+      if (!queue || queue.length === 0) {
+        container.innerHTML = '<div style="color: #666; font-size: 13px;">ยังไม่มีเพลงในคิว</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+      queue.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = `queue-item ${index === 0 ? 'playing' : ''}`;
+        div.innerHTML = `
+          <div class="queue-title">${index === 0 ? '▶ (กำลังเล่น) ' : `${index + 1}. `}${item.title}</div>
+        `;
+
+        let holdTimer;
+        // รองรับทั้ง Mobile Touch และ Mouse
+        div.addEventListener('touchstart', () => {
+          holdTimer = setTimeout(() => {
+            if (confirm(`ต้องการลบเพลง "${item.title}" ออกจากคิวหรือไม่?`)) {
+              if (conn && conn.open) conn.send({ action: 'REMOVE_SONG', index });
+            }
+          }, 2000);
+        });
+        div.addEventListener('touchend', () => clearTimeout(holdTimer));
+        div.addEventListener('mousedown', () => {
+          holdTimer = setTimeout(() => {
+            if (confirm(`ต้องการลบเพลง "${item.title}" ออกจากคิวหรือไม่?`)) {
+              if (conn && conn.open) conn.send({ action: 'REMOVE_SONG', index });
+            }
+          }, 2000);
+        });
+        div.addEventListener('mouseup', () => clearTimeout(holdTimer));
+
+        container.appendChild(div);
+      });
+    }
+
+    // ค้นหา 20 เพลง
     async function search() {
       const q = document.getElementById('searchInput').value.trim();
       if (!q) return;
 
       const container = document.getElementById('results');
+      const header = document.getElementById('resHeader');
+      header.style.display = 'block';
       container.innerHTML = '<p style="color:#aaa; text-align:center;">กำลังค้นหาเพลง...</p>';
 
       try {
@@ -91,7 +275,7 @@
           container.appendChild(div);
         });
       } catch (err) {
-        container.innerHTML = `<p style="color:red; text-align:center;">เกิดข้อผิดพลาด</p>`;
+        container.innerHTML = `<p style="color:red; text-align:center;">เกิดข้อผิดพลาดในการค้นหา</p>`;
       }
     }
 
