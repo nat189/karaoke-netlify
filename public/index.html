@@ -2,45 +2,318 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Online Karaoke Player</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Napat Karaoke</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #121212; color: #fff; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-    .container { width: 100%; max-width: 900px; }
-    .player-box { position: relative; width: 100%; padding-bottom: 56.25%; height: 0; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
-    .player-box iframe, .player-box div#player { position: absolute; top:0; left: 0; width: 100%; height: 100%; }
-    .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
-    input[type="text"] { flex: 1; padding: 12px 16px; border-radius: 8px; border: 1px solid #333; background: #222; color: #fff; font-size: 16px; }
-    button { padding: 12px 20px; border: none; border-radius: 8px; background: #00adb5; color: #fff; font-weight: bold; cursor: pointer; font-size: 16px; }
-    button:hover { background: #008f95; }
-    .list-title { margin-bottom: 10px; color: #aaa; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: #121212; color: #fff; padding: 16px; display: flex; justify-content: center; }
+    .container { width: 100%; max-width: 600px; }
+
+    /* กรอบจอ YouTube */
+    .player-wrapper {
+      position: relative;
+      width: 100%;
+      padding-bottom: 56.25%;
+      height: 0;
+      background: #000;
+      border-radius: 18px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    }
+    .player-wrapper iframe, .player-wrapper #player {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    /* ปุ่มข้ามเพลง */
+    .btn-skip {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(90deg, #ff416c, #ff4b2b);
+      border: none;
+      border-radius: 30px;
+      color: #fff;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 15px rgba(255, 65, 108, 0.3);
+    }
+
+    /* ปุ่มหยุดชั่วคราว */
+    .btn-pause {
+      width: 100%;
+      padding: 14px;
+      background: #5856d6;
+      border: none;
+      border-radius: 30px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 15px rgba(88, 86, 214, 0.3);
+    }
+
+    /* ช่องค้นหา */
+    .search-container {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .search-input {
+      flex: 1;
+      background: #242424;
+      border: 1px solid #333;
+      border-radius: 14px;
+      padding: 14px 16px;
+      color: #fff;
+      font-size: 16px;
+      outline: none;
+    }
+    .search-input::placeholder { color: #666; }
+    .btn-search {
+      background: #007aff;
+      border: none;
+      border-radius: 14px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: bold;
+      padding: 0 24px;
+      cursor: pointer;
+    }
+
+    /* คิวเพลง */
+    .queue-header {
+      color: #30d158;
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+    .queue-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+    .queue-item {
+      background: #1c1c1e;
+      padding: 12px 16px;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid #2c2c2e;
+      user-select: none;
+    }
+    .queue-item.playing { border-left: 4px solid #30d158; }
+    .queue-title { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 95%; }
+
+    /* ผลการค้นหา */
+    .results-header { color: #888; font-size: 14px; margin-bottom: 12px; }
     .song-list { display: flex; flex-direction: column; gap: 10px; }
-    .song-card { display: flex; align-items: center; background: #1f1f1f; padding: 10px; border-radius: 8px; gap: 15px; cursor: pointer; }
-    .song-card:hover { background: #2a2a2a; }
-    .song-card img { width: 100px; height: 60px; object-fit: cover; border-radius: 6px; }
-    .song-info { flex: 1; }
-    .song-title { font-size: 15px; font-weight: 600; line-height: 1.3; }
-    .song-meta { font-size: 12px; color: #888; margin-top: 4px; }
+    .song-item {
+      display: flex;
+      align-items: center;
+      background: #1c1c1e;
+      padding: 10px;
+      border-radius: 12px;
+      gap: 12px;
+    }
+    .song-item img { width: 90px; height: 55px; object-fit: cover; border-radius: 8px; }
+    .song-info { flex: 1; min-width: 0; }
+    .song-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .song-artist { font-size: 12px; color: #888; margin-top: 4px; }
+    .btn-add {
+      background: #ff453a;
+      border: none;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
 
   <div class="container">
-    <div class="player-box">
+    <!-- จอ YouTube ด้านบน -->
+    <div class="player-wrapper">
       <div id="player"></div>
     </div>
 
-    <div class="search-box">
-      <input type="text" id="searchInput" placeholder="พิมพ์ชื่อเพลงหรือศิลปิน...">
-      <button id="searchBtn">ค้นหาเพลง</button>
+    <!-- ปุ่มควบคุมข้าม / หยุด -->
+    <button class="btn-skip" id="btnSkip">ข้ามเพลง ❯❯</button>
+    <button class="btn-pause" id="btnPause">⏸ หยุดชั่วคราว</button>
+
+    <!-- ช่องค้นหา -->
+    <div class="search-container">
+      <input type="text" class="search-input" id="searchInput" placeholder="ค้นหาเพลง...">
+      <button class="btn-search" id="searchBtn">ค้นหา</button>
     </div>
 
-    <h3 class="list-title">ผลการค้นหา</h3>
-    <div class="song-list" id="resultsList"></div>
+    <!-- รายการคิวเพลง -->
+    <div class="queue-header">คิวเพลง (กดค้าง 2 วินาทีเพื่อลบ)</div>
+    <div class="queue-list" id="queueList">
+      <div style="color: #666; font-size: 13px;">ยังไม่มีเพลงในคิว</div>
+    </div>
+
+    <!-- รายการค้นหา 20 เพลง -->
+    <div class="results-header" id="resHeader" style="display:none;">ผลการค้นหา (20 เพลง)</div>
+    <div class="song-list" id="results"></div>
   </div>
 
   <script src="https://www.youtube.com/iframe_api"></script>
-  <script src="app.js"></script>
+  <script>
+    let player;
+    let playlist = [];
+    let isPlaying = false;
+    let isPaused = false;
+
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('player', {
+        playerVars: { 'autoplay': 1, 'controls': 1, 'playsinline': 1, 'rel': 0 },
+        events: {
+          'onStateChange': (event) => {
+            if (event.data === YT.PlayerState.ENDED) {
+              playNext();
+            }
+          }
+        }
+      });
+    }
+
+    function playVideo(song) {
+      if (player && player.loadVideoById) {
+        player.loadVideoById(song.videoId);
+      }
+      isPlaying = true;
+      isPaused = false;
+      document.getElementById('btnPause').innerText = '⏸ หยุดชั่วคราว';
+      renderQueue();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function playNext() {
+      playlist.shift();
+      if (playlist.length > 0) {
+        playVideo(playlist[0]);
+      } else {
+        isPlaying = false;
+        if (player && player.stopVideo) player.stopVideo();
+      }
+      renderQueue();
+    }
+
+    // ปุ่มข้ามเพลง
+    document.getElementById('btnSkip').onclick = () => {
+      if (playlist.length > 0) playNext();
+    };
+
+    // ปุ่มหยุด / เล่นต่อ
+    const btnPause = document.getElementById('btnPause');
+    btnPause.onclick = () => {
+      if (!player || !player.getPlayerState) return;
+      if (isPaused) {
+        player.playVideo();
+        btnPause.innerText = '⏸ หยุดชั่วคราว';
+      } else {
+        player.pauseVideo();
+        btnPause.innerText = '▶ เล่นต่อ';
+      }
+      isPaused = !isPaused;
+    };
+
+    // เพิ่มเพลงเข้าคิว
+    function addSong(song) {
+      playlist.push(song);
+      if (!isPlaying) {
+        playVideo(playlist[0]);
+      } else {
+        renderQueue();
+        alert(`เพิ่มเพลง "${song.title}" เข้าคิวเรียบร้อย!`);
+      }
+    }
+
+    // แสดงคิวเพลง + ระบบกดค้าง 2 วินาทีเพื่อลบ
+    function renderQueue() {
+      const container = document.getElementById('queueList');
+      if (playlist.length === 0) {
+        container.innerHTML = '<div style="color: #666; font-size: 13px;">ยังไม่มีเพลงในคิว</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+      playlist.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = `queue-item ${index === 0 ? 'playing' : ''}`;
+        div.innerHTML = `
+          <div class="queue-title">${index === 0 ? '▶ (กำลังเล่น) ' : `${index + 1}. `}${item.title}</div>
+        `;
+
+        let holdTimer;
+        const triggerDelete = () => {
+          if (confirm(`ต้องการลบเพลง "${item.title}" ออกจากคิวหรือไม่?`)) {
+            if (index === 0) {
+              playNext();
+            } else {
+              playlist.splice(index, 1);
+              renderQueue();
+            }
+          }
+        };
+
+        div.addEventListener('touchstart', () => { holdTimer = setTimeout(triggerDelete, 2000); });
+        div.addEventListener('touchend', () => clearTimeout(holdTimer));
+        div.addEventListener('mousedown', () => { holdTimer = setTimeout(triggerDelete, 2000); });
+        div.addEventListener('mouseup', () => clearTimeout(holdTimer));
+
+        container.appendChild(div);
+      });
+    }
+
+    // ค้นหาเพลงผ่าน Netlify Functions
+    async function search() {
+      const q = document.getElementById('searchInput').value.trim();
+      if (!q) return;
+
+      const container = document.getElementById('results');
+      const header = document.getElementById('resHeader');
+      header.style.display = 'block';
+      container.innerHTML = '<p style="color:#aaa; text-align:center;">กำลังค้นหาเพลง...</p>';
+
+      try {
+        const res = await fetch(`/.netlify/functions/search?q=${encodeURIComponent(q)}`);
+        const list = await res.json();
+        container.innerHTML = '';
+
+        list.forEach(song => {
+          const div = document.createElement('div');
+          div.className = 'song-item';
+          div.innerHTML = `
+            <img src="${song.thumbnail}" alt="thumb">
+            <div class="song-info">
+              <div class="song-title">${song.title}</div>
+              <div class="song-artist">${song.author} • ${song.duration}</div>
+            </div>
+            <button class="btn-add">จอง</button>
+          `;
+          div.querySelector('.btn-add').onclick = () => addSong(song);
+          container.appendChild(div);
+        });
+      } catch (err) {
+        container.innerHTML = `<p style="color:red; text-align:center;">เกิดข้อผิดพลาดในการค้นหา</p>`;
+      }
+    }
+
+    document.getElementById('searchBtn').onclick = search;
+    document.getElementById('searchInput').onkeypress = (e) => { if (e.key === 'Enter') search(); };
+  </script>
 </body>
 </html>
